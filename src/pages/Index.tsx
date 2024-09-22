@@ -15,6 +15,8 @@ import { SnackbarContent } from "../components/Snackbar/Snackbar";
 import { Navibar } from "../components/Navibar/Navibar";
 import { ConfirmationDialog } from "../components/Dialog/Confirmation";
 
+
+
 export const Index: React.FC = () => {
   const theme = useTheme();
 
@@ -30,7 +32,12 @@ export const Index: React.FC = () => {
   const [ifcLoadingErrorMessage, setIfcLoadingErrorMessage] =
     useState<string>();
 
+  window.getViewer = function () {
+    return ifcViewer;
+  }
+
   useEffect(() => {
+    ifcOnLoad(null);
     if (ifcContainerRef.current) {
       const container = ifcContainerRef.current;
       console.log("container", container);
@@ -50,7 +57,7 @@ export const Index: React.FC = () => {
     }
   }, []);
 
-  const ifcOnLoad = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const ifcOnLoad = async (e?: React.ChangeEvent<HTMLInputElement>) => {
     const file = e && e.target && e.target.files && e.target.files[0];
     if (file && ifcViewer) {
       setIfcLoadingErrorMessage("");

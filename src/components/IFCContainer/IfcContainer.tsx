@@ -1,6 +1,6 @@
-import React, { forwardRef, Fragment } from "react";
+import React, { forwardRef, Fragment, useEffect } from "react";
 import { IfcViewerAPI } from "web-ifc-viewer";
-import { Grid, Popover, Typography } from "@mui/material";
+import { Button, Grid, Popover, Typography } from "@mui/material";
 
 interface IfcRecord {
   [key: string]: string;
@@ -9,11 +9,36 @@ interface IfcRecord {
 interface IfcContainerProps {
   viewer?: IfcViewerAPI;
 }
+import { io } from 'socket.io-client';
+
+const sensors: any = {};
+
+window.sensorsTEST = function() {
+  return sensors;
+}
+
+let lastSelected = null;
+
+const socket = io("http://localhost/");
 
 export const IfcContainer = forwardRef<HTMLDivElement, IfcContainerProps>(
   function IfcContainerFunc(props, ref) {
     const [popoverOpen, setPopoverOpen] = React.useState(false);
     const [curIfcRecords, setIfcRecords] = React.useState<IfcRecord>();
+
+
+    const [sensorsData, setSensorsData] = React.useState({});
+
+    useEffect(() => {
+      socket.on("connect", () => {
+        socket.emit("login", "12345678")
+      })
+
+      socket.on("data", (data) => {
+        setSensorsData(data);
+        console.log(">==>", data)
+      })
+    }, []);
 
     const viewer = props.viewer;
     const id = popoverOpen ? "simple-popover" : undefined;
@@ -25,12 +50,15 @@ export const IfcContainer = forwardRef<HTMLDivElement, IfcContainerProps>(
     const ifcOnDoubleClick = async () => {
       if (viewer) {
         const result = await viewer.IFC.selector.pickIfcItem(true, true);
+
+        lastSelected = result;
         if (result) {
           const props = await viewer.IFC.getProperties(
             result.modelID,
             result.id,
             false
           );
+
           console.log(props);
           const type = viewer.IFC.loader.ifcManager.getIfcType(
             result.modelID,
@@ -40,6 +68,9 @@ export const IfcContainer = forwardRef<HTMLDivElement, IfcContainerProps>(
           if (props) {
             const ifcRecords: IfcRecord = {};
             ifcRecords["Entity Type"] = type;
+            if(sensors.hasOwnProperty(result.modelID+";"+result.id)) {
+              ifcRecords["Capteur en direct"] = "=" + sensorsData[sensors[result.modelID+";"+result.id]];
+            }
             ifcRecords["GlobalId"] = props.GlobalId && props.GlobalId?.value;
             ifcRecords["Name"] = props.Name && props.Name?.value;
             ifcRecords["ObjectType"] =
@@ -102,6 +133,14 @@ export const IfcContainer = forwardRef<HTMLDivElement, IfcContainerProps>(
                 )}
             </Grid>
           </Grid>
+          <Button fullWidth={true} onClick={async () => {
+            const result = lastSelected;
+            if (result) {
+              sensors[result.modelID+";"+result.id] = prompt("Nom du capteur");
+            }
+          }}>
+            LIER A UN CAPTEUR
+          </Button>
         </Popover>
       </>
     );
